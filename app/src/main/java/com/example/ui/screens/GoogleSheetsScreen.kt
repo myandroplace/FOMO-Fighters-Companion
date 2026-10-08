@@ -8,6 +8,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,11 +21,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Webhook
@@ -51,12 +56,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.MainViewModel
 import com.example.ui.theme.AccentGold
+import com.example.ui.theme.LootFood
 import com.example.ui.theme.PrimaryViolet
 import com.example.ui.theme.ProfitGreen
 import com.example.ui.theme.SurfaceCard
@@ -77,6 +82,8 @@ fun GoogleSheetsScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
 
+    val totalParticipants = viewModel.totalParticipantsCount
+
     var editableSheetUrl by remember(sheetConfig) { mutableStateOf(sheetConfig.sheetUrl) }
     var editableWebhookUrl by remember(sheetConfig) { mutableStateOf(sheetConfig.webhookUrl) }
 
@@ -91,22 +98,23 @@ fun GoogleSheetsScreen(
             Text(
                 text = "Экспорт в Google Таблицы",
                 color = TextPrimary,
-                fontSize = 20.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Выгрузка истории осад, кланов, влияния и наград участников",
+                text = "Выгрузка детальной статистики влияния и наград со всех аванпостов",
                 color = TextSecondary,
                 fontSize = 12.sp
             )
         }
 
-        // Quick Export Buttons Card
+        // Primary: Detailed Participants Export Card
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, SurfaceCardBorder, RoundedCornerShape(16.dp)),
+                    .testTag("detailed_participants_export_card")
+                    .border(1.dp, AccentGold.copy(alpha = 0.6f), RoundedCornerShape(16.dp)),
                 colors = CardDefaults.cardColors(containerColor = SurfaceCard),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -116,30 +124,43 @@ fun GoogleSheetsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Быстрый экспорт в буфер обмена",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(ProfitGreen.copy(alpha = 0.2f))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = "${sieges.size} осад",
-                                color = ProfitGreen,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(AccentGold.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Groups,
+                                    contentDescription = null,
+                                    tint = AccentGold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Детализация участников (Вклад и награды)",
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                                Text(
+                                    text = "$totalParticipants записей бойцов со всех ${sieges.size} осад",
+                                    color = AccentGold,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     Text(
-                        text = "Скопируйте в буфер и вставьте (Ctrl+V) прямо в ячейку A1 в Google Sheets — колонки и строки заполнятся автоматически!",
+                        text = "Содержит все необходимые колонки: Дата, Время, Аванпост, Тип, Клан, Ранг, Ур. игрока, Ник, Вклад (мощь ⚔️), %, Влияние (🪖), Награды (еда 🌾, дерево, камень, токены).",
                         color = TextSecondary,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
@@ -147,39 +168,134 @@ fun GoogleSheetsScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
+                    // Big Primary Copy Button
                     Button(
-                        onClick = {
-                            val tsv = viewModel.getSiegesTsv()
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText("Осады Аванпостов", tsv))
-                            Toast.makeText(context, "Таблица осад скопирована! Вставьте в Google Sheets", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("copy_sieges_tsv_button"),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryViolet)
-                    ) {
-                        Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Black)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Скопировать сводку осад (TSV)", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    OutlinedButton(
                         onClick = {
                             val tsv = viewModel.getParticipantsTsv()
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText("Участники и награды", tsv))
-                            Toast.makeText(context, "Детальная таблица участников скопирована!", Toast.LENGTH_SHORT).show()
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Детализация участников всех аванпостов", tsv))
+                            Toast.makeText(
+                                context,
+                                "Скопировано $totalParticipants участников со всех осад! Вставьте (Ctrl+V) в Google Sheets",
+                                Toast.LENGTH_LONG
+                            ).show()
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("copy_participants_tsv_button")
+                            .testTag("copy_participants_tsv_button"),
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold)
                     ) {
-                        Icon(Icons.Filled.TableChart, contentDescription = null, modifier = Modifier.size(18.dp), tint = AccentGold)
+                        Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Black)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Скопировать таблицу участников и наград", color = TextPrimary)
+                        Text(
+                            text = "Скопировать участников ВСЕХ аванпостов (TSV)",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Secondary: Copy Sieges Summary
+                    OutlinedButton(
+                        onClick = {
+                            val tsv = viewModel.getSiegesTsv()
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Сводка осад аванпостов", tsv))
+                            Toast.makeText(context, "Сводка осад скопирована!", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("copy_sieges_tsv_button")
+                    ) {
+                        Icon(Icons.Filled.TableChart, contentDescription = null, modifier = Modifier.size(16.dp), tint = PrimaryViolet)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Скопировать сводку осад (общие данные)", color = TextPrimary, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        // Preview Table of Participants
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, SurfaceCardBorder, RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Предпросмотр таблицы участников",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "Для Google Sheets",
+                            color = TextMuted,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Scrollable mini table preview
+                    val scrollState = rememberScrollState()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(scrollState)
+                            .background(SurfaceDark, RoundedCornerShape(8.dp))
+                            .padding(8.dp)
+                    ) {
+                        Column {
+                            // Header Row
+                            Row(
+                                modifier = Modifier
+                                    .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
+                                    .padding(vertical = 4.dp, horizontal = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(text = "Дата", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(75.dp))
+                                Text(text = "Аванпост", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(85.dp))
+                                Text(text = "Ур.", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(30.dp))
+                                Text(text = "Игрок", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(90.dp))
+                                Text(text = "Вклад ⚔️", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(70.dp))
+                                Text(text = "Влияние 🪖", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(75.dp))
+                                Text(text = "Еда 🌾", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(65.dp))
+                            }
+
+                            HorizontalDivider(color = SurfaceCardBorder, modifier = Modifier.padding(vertical = 4.dp))
+
+                            // Rows from sieges
+                            val allParticipantsFlat = sieges.flatMap { s ->
+                                s.participants.map { p -> s to p }
+                            }.take(10) // Show first 10 for preview
+
+                            allParticipantsFlat.forEach { (s, p) ->
+                                Row(
+                                    modifier = Modifier.padding(vertical = 3.dp, horizontal = 6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(text = s.date.split(",").firstOrNull() ?: "", color = TextMuted, fontSize = 11.sp, modifier = Modifier.width(75.dp))
+                                    Text(text = s.outpostName, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(85.dp))
+                                    Text(text = "${p.playerLevel}", color = AccentGold, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(30.dp))
+                                    Text(text = p.playerName, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(90.dp))
+                                    Text(text = p.powerFormatted, color = TextPrimary, fontSize = 11.sp, modifier = Modifier.width(70.dp))
+                                    Text(text = p.influenceFormatted, color = AccentGold, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(75.dp))
+                                    Text(text = formatRewardScore(p.rewardFood), color = LootFood, fontSize = 11.sp, modifier = Modifier.width(65.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -220,7 +336,7 @@ fun GoogleSheetsScreen(
                         colors = sheetsFieldColors()
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -234,11 +350,14 @@ fun GoogleSheetsScreen(
                                         webhookUrl = editableWebhookUrl.trim()
                                     )
                                 )
+                                Toast.makeText(context, "Настройки сохранены!", Toast.LENGTH_SHORT).show()
                             },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = SurfaceDark)
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("save_sheet_config_button"),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryViolet)
                         ) {
-                            Text("Сохранить ссылку", color = TextPrimary, fontSize = 12.sp)
+                            Text("Сохранить ссылку", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
 
                         Button(
@@ -269,99 +388,19 @@ fun GoogleSheetsScreen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.Webhook, contentDescription = null, tint = PrimaryViolet, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(Icons.Filled.Webhook, contentDescription = null, tint = ProfitGreen, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Авто-выгрузка через Webhook / Apps Script",
+                            text = "Отправка в Google Таблицу через Webhook",
                             color = TextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedTextField(
-                        value = editableWebhookUrl,
-                        onValueChange = { editableWebhookUrl = it },
-                        label = { Text("URL веб-приложения Apps Script", color = TextSecondary) },
-                        placeholder = { Text("https://script.google.com/macros/s/.../exec", color = TextMuted) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        colors = sheetsFieldColors()
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Button(
-                        onClick = {
-                            viewModel.updateSheetConfig(
-                                sheetConfig.copy(
-                                    sheetUrl = editableSheetUrl.trim(),
-                                    webhookUrl = editableWebhookUrl.trim()
-                                )
-                            )
-                            viewModel.syncToGoogleSheetsWebhook()
-                        },
-                        enabled = !isLoading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("send_to_webhook_button"),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryViolet)
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.Black, strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Отправка в Google Таблицу...", color = Color.Black)
-                        } else {
-                            Icon(Icons.Filled.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Black)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Отправить в Google Таблицу сейчас", color = Color.Black, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-
-        // Ready Google Apps Script Code
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, SurfaceCardBorder, RoundedCornerShape(16.dp)),
-                colors = CardDefaults.cardColors(containerColor = SurfaceCard),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Код скрипта для Google Таблицы",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                        OutlinedButton(
-                            onClick = {
-                                val script = viewModel.getAppsScriptTemplate()
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("Apps Script", script))
-                                Toast.makeText(context, "Код скрипта скопирован!", Toast.LENGTH_SHORT).show()
-                            },
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp), tint = AccentGold)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Копировать код", fontSize = 11.sp, color = AccentGold)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Инструкция за 30 секунд:\n1. В вашей Google Таблице откройте Расширения ➔ Apps Script\n2. Вставьте этот код и нажмите «Развернуть» ➔ «Новое развертывание» ➔ «Веб-приложение» (доступ: Все)\n3. Вставьте полученную ссылку в поле Webhook выше!",
+                        text = "Вставьте URL Google Apps Script для автоматической заливки всех строк осад и участников без ручного копирования.",
                         color = TextSecondary,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
@@ -369,25 +408,96 @@ fun GoogleSheetsScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Box(
+                    OutlinedTextField(
+                        value = editableWebhookUrl,
+                        onValueChange = { editableWebhookUrl = it },
+                        label = { Text("URL Google Apps Script Webhook", color = TextSecondary) },
+                        placeholder = { Text("https://script.google.com/macros/s/.../exec", color = TextMuted) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = sheetsFieldColors()
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = { viewModel.syncToGoogleSheetsWebhook() },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(SurfaceDark)
-                            .border(1.dp, SurfaceCardBorder, RoundedCornerShape(8.dp))
-                            .padding(10.dp)
+                            .testTag("sync_to_webhook_button"),
+                        enabled = !isLoading,
+                        colors = ButtonDefaults.buttonColors(containerColor = ProfitGreen)
                     ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.Black, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Отправка в таблицу...", color = Color.Black, fontWeight = FontWeight.Bold)
+                        } else {
+                            Icon(Icons.Filled.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Black)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Отправить в Google Таблицу сейчас", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    if (statusMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = viewModel.getAppsScriptTemplate(),
-                            color = TextSecondary,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            lineHeight = 14.sp
+                            text = statusMessage ?: "",
+                            color = AccentGold,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(20.dp))
+        }
+
+        // Apps Script Code Template
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, SurfaceCardBorder, RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Код скрипта Google Apps Script",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "В вашей таблице откройте Расширения -> Apps Script, вставьте этот код и опубликуйте как Веб-приложение:",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            val script = viewModel.getAppsScriptTemplate()
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Google Apps Script", script))
+                            Toast.makeText(context, "Код скрипта скопирован в буфер обмена!", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("copy_apps_script_button")
+                    ) {
+                        Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp), tint = AccentGold)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Скопировать код Apps Script", color = TextPrimary, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -399,5 +509,15 @@ private fun sheetsFieldColors() = TextFieldDefaults.colors(
     focusedIndicatorColor = PrimaryViolet,
     unfocusedIndicatorColor = SurfaceCardBorder,
     focusedTextColor = TextPrimary,
-    unfocusedTextColor = TextPrimary
+    unfocusedTextColor = TextPrimary,
+    cursorColor = PrimaryViolet
 )
+
+private fun formatRewardScore(amount: Long): String {
+    return when {
+        amount >= 1_000_000_000L -> String.format(java.util.Locale.US, "%.0fB", amount / 1_000_000_000.0)
+        amount >= 1_000_000L -> String.format(java.util.Locale.US, "%.0fM", amount / 1_000_000.0)
+        amount >= 1_000L -> String.format(java.util.Locale.US, "%.0fK", amount / 1_000.0)
+        else -> amount.toString()
+    }
+}

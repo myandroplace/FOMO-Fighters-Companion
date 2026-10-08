@@ -221,6 +221,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return GoogleSheetsExporter.generateParticipantsTsv(outpostSieges.value)
     }
 
+    fun getSingleSiegeParticipantsTsv(siege: OutpostSiege): String {
+        return GoogleSheetsExporter.generateSingleSiegeParticipantsTsv(siege)
+    }
+
+    val totalParticipantsCount: Int
+        get() = outpostSieges.value.sumOf { it.participants.size }
+
     fun getAppsScriptTemplate(): String {
         return GoogleSheetsExporter.getAppsScriptTemplate()
     }
@@ -283,6 +290,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun importRawJson(jsonText: String) {
+        val trimmed = jsonText.trim()
+        if (trimmed.contains("outpost") || trimmed.contains("siege") || trimmed.contains("Форт") || trimmed.contains("Донжон") || trimmed.contains("Твердыня") || trimmed.contains("participants")) {
+            try {
+                val sieges = OutpostData.parseOutpostSiegesJson(jsonText)
+                if (sieges.isNotEmpty()) {
+                    _outpostSieges.value = sieges
+                    prefs.edit().putString("saved_outposts_json", jsonText).apply()
+                    _statusMessage.value = "Успешно импортировано ${sieges.size} осад и ${sieges.sumOf { it.participants.size }} участников аванпостов!"
+                    return
+                }
+            } catch (e: Exception) {
+                // Fallback to battle logs below
+            }
+        }
         try {
             val logs = FomoFightersApi.parseBattleLogsJson(jsonText)
             if (logs.isNotEmpty()) {

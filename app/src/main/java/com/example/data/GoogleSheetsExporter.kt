@@ -48,19 +48,28 @@ object GoogleSheetsExporter {
     }
 
     /**
-     * Generates clean Tab-Separated Values (TSV) for all participants (Влияние и награды).
+     * Generates clean Tab-Separated Values (TSV) for all participants (Влияние и награды) across all sieges.
+     * Ready for direct Ctrl+V pasting into Google Sheets!
      */
     fun generateParticipantsTsv(sieges: List<OutpostSiege>): String {
         return buildString {
-            append("Дата осады\tАванпост\tТип\tРанг\tИгрок\tКлан\tВлияние\tЕда 🌾\tДерево 🪵\tКамень 🪨\tАлмазы 💎\tЖетоны клана 🪙\n")
+            append("Дата осады\tВремя\tАванпост\tСпециализация\tРанг\tУр. игрока\tИгрок\tКлан\tВклад (мощь ⚔️)\tВклад (%)\tВлияние (🪖)\tНаграда Еда (🌾)\tНаграда Дерево (🪵)\tНаграда Камень (🪨)\tАлмазы (💎)\tТокены клана (🪙)\n")
             for (s in sieges) {
+                val dateParts = s.date.split(", ")
+                val dateOnly = dateParts.getOrElse(0) { s.date }
+                val timeOnly = dateParts.getOrElse(1) { "" }
+
                 for (p in s.participants) {
-                    append(s.date).append("\t")
+                    append(dateOnly).append("\t")
+                    append(timeOnly).append("\t")
                     append("${s.outpostLevel} ${s.outpostName}").append("\t")
                     append(s.outpostType).append("\t")
                     append(p.rank).append("\t")
+                    append(p.playerLevel).append("\t")
                     append(p.playerName).append("\t")
                     append(p.clanTag).append("\t")
+                    append(p.powerFormatted).append("\t")
+                    append(p.contributionPercent).append("\t")
                     append(p.influenceFormatted).append("\t")
                     append(p.rewardFood).append("\t")
                     append(p.rewardWood).append("\t")
@@ -70,6 +79,13 @@ object GoogleSheetsExporter {
                 }
             }
         }
+    }
+
+    /**
+     * Generates TSV for participants of a SINGLE siege.
+     */
+    fun generateSingleSiegeParticipantsTsv(siege: OutpostSiege): String {
+        return generateParticipantsTsv(listOf(siege))
     }
 
     /**
@@ -95,18 +111,25 @@ object GoogleSheetsExporter {
                         put("winner", s.winnerClan?.tag ?: "")
                         put("winnerScore", s.winnerClan?.scoreFormatted ?: "0")
                         put("clansCount", s.participatingClansCount)
+                        put("totalPowerSent", s.totalPowerSent)
+                        put("powerPercentSent", s.powerPercentSent)
 
                         val partsArr = JSONArray()
                         for (p in s.participants) {
                             partsArr.put(JSONObject().apply {
                                 put("name", p.playerName)
+                                put("level", p.playerLevel)
                                 put("clan", p.clanTag)
                                 put("influence", p.influenceFormatted)
+                                put("influenceRaw", p.influence)
+                                put("power", p.powerFormatted)
+                                put("powerPercent", p.contributionPercent)
                                 put("rank", p.rank)
                                 put("food", p.rewardFood)
                                 put("wood", p.rewardWood)
                                 put("stone", p.rewardStone)
                                 put("gems", p.rewardGem)
+                                put("tokens", p.rewardClanTokens)
                             })
                         }
                         put("participants", partsArr)
