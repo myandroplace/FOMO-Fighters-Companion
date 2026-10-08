@@ -1,0 +1,6 @@
+{
+  "name": "FOMO Fighters Companion",
+  "description": "Battle logs analyzer, loot tracker, raid calculator, and API sync for FOMO Fighters",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
