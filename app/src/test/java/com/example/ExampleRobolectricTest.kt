@@ -44,9 +44,14 @@ class ExampleRobolectricTest {
   fun `outpost sieges and google sheets tsv exporter work correctly`() {
     val sieges = OutpostData.sampleSieges
     assertTrue("Outpost sieges should contain battles", sieges.isNotEmpty())
-    assertEquals(4, sieges.size)
+    assertEquals(5, sieges.size)
 
-    val fortSiege = sieges.first()
+    val tverdinyaSiege = sieges.first { it.outpostName == "Твердыня" }
+    assertEquals("Экономический", tverdinyaSiege.outpostType)
+    assertEquals(2, tverdinyaSiege.participatingClansCount)
+    assertEquals("Сумеречный патруль", tverdinyaSiege.winnerClan?.clanName)
+
+    val fortSiege = sieges.first { it.outpostName == "Форт" }
     assertEquals("Форт", fortSiege.outpostName)
     assertEquals("Логистика", fortSiege.outpostType)
     assertEquals(2, fortSiege.participatingClansCount)
@@ -57,6 +62,8 @@ class ExampleRobolectricTest {
     assertTrue("TSV should contain Crypto Wolf", tsv.contains("Crypto Wolf"))
 
     val participantsTsv = GoogleSheetsExporter.generateParticipantsTsv(sieges)
-    assertTrue("Participants TSV should contain player names", participantsTsv.contains("AlphaWolf_77"))
+    assertTrue("Participants TSV should contain player names", participantsTsv.contains("Аль Чаг"))
+    assertTrue("Participants TSV should contain AlphaWolf_77", participantsTsv.contains("AlphaWolf_77"))
+    assertTrue("Participants TSV should contain Вклад column", participantsTsv.contains("Вклад (мощь ⚔️)"))
   }
 }
