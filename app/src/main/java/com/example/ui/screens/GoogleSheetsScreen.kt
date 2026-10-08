@@ -38,6 +38,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -86,6 +88,7 @@ fun GoogleSheetsScreen(
 
     var editableSheetUrl by remember(sheetConfig) { mutableStateOf(sheetConfig.sheetUrl) }
     var editableWebhookUrl by remember(sheetConfig) { mutableStateOf(sheetConfig.webhookUrl) }
+    var previewMode by remember { mutableStateOf(0) } // 0: 3-колоночный формат (Дата, Аванпост, Вклад), 1: 4-колоночный, 2: Полный
 
     LazyColumn(
         modifier = modifier
@@ -142,7 +145,7 @@ fun GoogleSheetsScreen(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "Детализация участников (Вклад и награды)",
+                                    text = "Детализация участников аванпостов",
                                     color = TextPrimary,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp
@@ -160,7 +163,7 @@ fun GoogleSheetsScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = "Содержит все необходимые колонки: Дата, Время, Аванпост, Тип, Клан, Ранг, Ур. игрока, Ник, Вклад (мощь ⚔️), %, Влияние (🪖), Награды (еда 🌾, дерево, камень, токены).",
+                        text = "Структура таблицы: Дата, Название аванпоста, Вклад (например: Аль Чаг 35М). При вставке в Google Sheets (Ctrl+V) данные автоматически распределяются по колонкам.",
                         color = TextSecondary,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
@@ -168,36 +171,88 @@ fun GoogleSheetsScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Big Primary Copy Button
+                    // Primary Button 1: Exact 3-column format as requested by user
                     Button(
                         onClick = {
-                            val tsv = viewModel.getParticipantsTsv()
+                            val tsv = viewModel.getCompact3ColTsv()
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText("Детализация участников всех аванпостов", tsv))
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Дата | Аванпост | Вклад", tsv))
                             Toast.makeText(
                                 context,
-                                "Скопировано $totalParticipants участников со всех осад! Вставьте (Ctrl+V) в Google Sheets",
+                                "Скопировано $totalParticipants участников (Дата, Аванпост, Вклад)! Вставьте (Ctrl+V) в Google Sheets",
                                 Toast.LENGTH_LONG
                             ).show()
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("copy_participants_tsv_button"),
+                            .testTag("copy_compact_3col_tsv_button"),
                         colors = ButtonDefaults.buttonColors(containerColor = AccentGold)
                     ) {
                         Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Black)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Скопировать участников ВСЕХ аванпостов (TSV)",
+                            text = "Скопировать: Дата | Аванпост | Вклад (Аль Чаг 35М)",
                             color = Color.Black,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            fontSize = 12.sp
                         )
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Secondary: Copy Sieges Summary
+                    // Button 2: 4-column structured format (Дата | Аванпост | Участник | Вклад)
+                    Button(
+                        onClick = {
+                            val tsv = viewModel.getStandard4ColTsv()
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Дата | Аванпост | Участник | Вклад", tsv))
+                            Toast.makeText(
+                                context,
+                                "Скопировано $totalParticipants участников (4 колонки: Дата, Аванпост, Участник, Вклад)!",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("copy_standard_4col_tsv_button"),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryViolet)
+                    ) {
+                        Icon(Icons.Filled.TableChart, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Black)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Скопировать: Дата | Аванпост | Участник | Вклад",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Button 3: Full Detailed with all rewards
+                    OutlinedButton(
+                        onClick = {
+                            val tsv = viewModel.getParticipantsTsv()
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Полная детализация участников всех аванпостов", tsv))
+                            Toast.makeText(
+                                context,
+                                "Скопирована полная таблица участников со всеми ресурсами и наградами!",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("copy_participants_tsv_button")
+                    ) {
+                        Icon(Icons.Filled.Groups, contentDescription = null, modifier = Modifier.size(16.dp), tint = AccentGold)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Скопировать полную таблицу (с наградами и ресурсами)", color = TextPrimary, fontSize = 12.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Button 4: Copy Sieges Summary
                     OutlinedButton(
                         onClick = {
                             val tsv = viewModel.getSiegesTsv()
@@ -217,7 +272,7 @@ fun GoogleSheetsScreen(
             }
         }
 
-        // Preview Table of Participants
+        // Preview Table of Participants with Mode Selector
         item {
             Card(
                 modifier = Modifier
@@ -233,7 +288,7 @@ fun GoogleSheetsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Предпросмотр таблицы участников",
+                            text = "Предпросмотр структуры таблицы",
                             color = TextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
@@ -247,7 +302,43 @@ fun GoogleSheetsScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Scrollable mini table preview
+                    // Format Switcher Chips
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        FilterChip(
+                            selected = previewMode == 0,
+                            onClick = { previewMode = 0 },
+                            label = { Text("3 колонки", fontSize = 11.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AccentGold,
+                                selectedLabelColor = Color.Black
+                            )
+                        )
+                        FilterChip(
+                            selected = previewMode == 1,
+                            onClick = { previewMode = 1 },
+                            label = { Text("4 колонки", fontSize = 11.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = PrimaryViolet,
+                                selectedLabelColor = Color.Black
+                            )
+                        )
+                        FilterChip(
+                            selected = previewMode == 2,
+                            onClick = { previewMode = 2 },
+                            label = { Text("Полная", fontSize = 11.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AccentGold,
+                                selectedLabelColor = Color.Black
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Scrollable table preview
                     val scrollState = rememberScrollState()
                     Row(
                         modifier = Modifier
@@ -257,42 +348,101 @@ fun GoogleSheetsScreen(
                             .padding(8.dp)
                     ) {
                         Column {
-                            // Header Row
-                            Row(
-                                modifier = Modifier
-                                    .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
-                                    .padding(vertical = 4.dp, horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Text(text = "Дата", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(75.dp))
-                                Text(text = "Аванпост", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(85.dp))
-                                Text(text = "Ур.", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(30.dp))
-                                Text(text = "Игрок", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(90.dp))
-                                Text(text = "Вклад ⚔️", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(70.dp))
-                                Text(text = "Влияние 🪖", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(75.dp))
-                                Text(text = "Еда 🌾", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(65.dp))
-                            }
-
-                            HorizontalDivider(color = SurfaceCardBorder, modifier = Modifier.padding(vertical = 4.dp))
-
-                            // Rows from sieges
                             val allParticipantsFlat = sieges.flatMap { s ->
                                 s.participants.map { p -> s to p }
                             }.take(10) // Show first 10 for preview
 
-                            allParticipantsFlat.forEach { (s, p) ->
-                                Row(
-                                    modifier = Modifier.padding(vertical = 3.dp, horizontal = 6.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(text = s.date.split(",").firstOrNull() ?: "", color = TextMuted, fontSize = 11.sp, modifier = Modifier.width(75.dp))
-                                    Text(text = s.outpostName, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(85.dp))
-                                    Text(text = "${p.playerLevel}", color = AccentGold, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(30.dp))
-                                    Text(text = p.playerName, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(90.dp))
-                                    Text(text = p.powerFormatted, color = TextPrimary, fontSize = 11.sp, modifier = Modifier.width(70.dp))
-                                    Text(text = p.influenceFormatted, color = AccentGold, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(75.dp))
-                                    Text(text = formatRewardScore(p.rewardFood), color = LootFood, fontSize = 11.sp, modifier = Modifier.width(65.dp))
+                            when (previewMode) {
+                                0 -> {
+                                    // 3-Column: Дата | Название аванпоста | Вклад (например Аль Чаг 35М)
+                                    Row(
+                                        modifier = Modifier
+                                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
+                                            .padding(vertical = 4.dp, horizontal = 6.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                    ) {
+                                        Text(text = "Дата", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(90.dp))
+                                        Text(text = "Название аванпоста", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(130.dp))
+                                        Text(text = "Вклад", color = AccentGold, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(140.dp))
+                                    }
+
+                                    HorizontalDivider(color = SurfaceCardBorder, modifier = Modifier.padding(vertical = 4.dp))
+
+                                    allParticipantsFlat.forEach { (s, p) ->
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 3.dp, horizontal = 6.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(text = s.date.split(",").firstOrNull() ?: s.date, color = TextMuted, fontSize = 11.sp, modifier = Modifier.width(90.dp))
+                                            Text(text = "${s.outpostLevel} ${s.outpostName}", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(130.dp))
+                                            Text(text = "${p.playerName}     ${p.powerFormatted}", color = AccentGold, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(140.dp))
+                                        }
+                                    }
+                                }
+                                1 -> {
+                                    // 4-Column: Дата | Название аванпоста | Участник | Вклад
+                                    Row(
+                                        modifier = Modifier
+                                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
+                                            .padding(vertical = 4.dp, horizontal = 6.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                    ) {
+                                        Text(text = "Дата", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(90.dp))
+                                        Text(text = "Название аванпоста", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(130.dp))
+                                        Text(text = "Участник", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(110.dp))
+                                        Text(text = "Вклад", color = AccentGold, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(70.dp))
+                                    }
+
+                                    HorizontalDivider(color = SurfaceCardBorder, modifier = Modifier.padding(vertical = 4.dp))
+
+                                    allParticipantsFlat.forEach { (s, p) ->
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 3.dp, horizontal = 6.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(text = s.date.split(",").firstOrNull() ?: s.date, color = TextMuted, fontSize = 11.sp, modifier = Modifier.width(90.dp))
+                                            Text(text = "${s.outpostLevel} ${s.outpostName}", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(130.dp))
+                                            Text(text = p.playerName, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(110.dp))
+                                            Text(text = p.powerFormatted, color = AccentGold, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(70.dp))
+                                        }
+                                    }
+                                }
+                                else -> {
+                                    // Full view
+                                    Row(
+                                        modifier = Modifier
+                                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(4.dp))
+                                            .padding(vertical = 4.dp, horizontal = 6.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Text(text = "Дата", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(75.dp))
+                                        Text(text = "Аванпост", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(85.dp))
+                                        Text(text = "Ур.", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(30.dp))
+                                        Text(text = "Игрок", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(90.dp))
+                                        Text(text = "Вклад ⚔️", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(70.dp))
+                                        Text(text = "Влияние 🪖", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(75.dp))
+                                        Text(text = "Еда 🌾", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.width(65.dp))
+                                    }
+
+                                    HorizontalDivider(color = SurfaceCardBorder, modifier = Modifier.padding(vertical = 4.dp))
+
+                                    allParticipantsFlat.forEach { (s, p) ->
+                                        Row(
+                                            modifier = Modifier.padding(vertical = 3.dp, horizontal = 6.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(text = s.date.split(",").firstOrNull() ?: "", color = TextMuted, fontSize = 11.sp, modifier = Modifier.width(75.dp))
+                                            Text(text = s.outpostName, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(85.dp))
+                                            Text(text = "${p.playerLevel}", color = AccentGold, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(30.dp))
+                                            Text(text = p.playerName, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(90.dp))
+                                            Text(text = p.powerFormatted, color = TextPrimary, fontSize = 11.sp, modifier = Modifier.width(70.dp))
+                                            Text(text = p.influenceFormatted, color = AccentGold, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(75.dp))
+                                            Text(text = formatRewardScore(p.rewardFood), color = LootFood, fontSize = 11.sp, modifier = Modifier.width(65.dp))
+                                        }
+                                    }
                                 }
                             }
                         }

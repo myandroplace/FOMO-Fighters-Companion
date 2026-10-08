@@ -207,12 +207,12 @@ fun OutpostsScreen(
                     ) {
                         Button(
                             onClick = {
-                                val tsv = viewModel.getParticipantsTsv()
+                                val tsv = viewModel.getCompact3ColTsv()
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("Детализация участников аванпостов", tsv))
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Дата | Название аванпоста | Вклад", tsv))
                                 Toast.makeText(
                                     context,
-                                    "Скопировано $totalParticipantsCount участников со всех аванпостов! Вставьте (Ctrl+V) в Google Таблицу",
+                                    "Скопировано $totalParticipantsCount участников (Дата | Аванпост | Вклад)! Вставьте (Ctrl+V) в Google Таблицу",
                                     Toast.LENGTH_LONG
                                 ).show()
                             },
@@ -224,10 +224,10 @@ fun OutpostsScreen(
                             Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Black)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Скопировать участников (TSV)",
+                                text = "Скопировать вклад (Дата, Аванпост, Вклад)",
                                 color = Color.Black,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
+                                fontSize = 11.sp
                             )
                         }
 

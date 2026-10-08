@@ -217,12 +217,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return GoogleSheetsExporter.generateSiegesTsv(outpostSieges.value)
     }
 
+    fun getCompact3ColTsv(): String {
+        return GoogleSheetsExporter.generateCompact3ColTsv(outpostSieges.value)
+    }
+
+    fun getStandard4ColTsv(): String {
+        return GoogleSheetsExporter.generateStandard4ColTsv(outpostSieges.value)
+    }
+
     fun getParticipantsTsv(): String {
         return GoogleSheetsExporter.generateParticipantsTsv(outpostSieges.value)
     }
 
     fun getSingleSiegeParticipantsTsv(siege: OutpostSiege): String {
         return GoogleSheetsExporter.generateSingleSiegeParticipantsTsv(siege)
+    }
+
+    fun getSingleSiegeCompact3ColTsv(siege: OutpostSiege): String {
+        return GoogleSheetsExporter.generateCompact3ColTsv(listOf(siege))
     }
 
     val totalParticipantsCount: Int

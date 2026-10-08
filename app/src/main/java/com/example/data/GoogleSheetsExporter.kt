@@ -48,6 +48,45 @@ object GoogleSheetsExporter {
     }
 
     /**
+     * Exact format requested by user:
+     * 3 columns: "Дата", "Название аванпоста", "Вклад"
+     * Where "Вклад" column contains: "Аль Чаг 35М" (Player name and contribution)
+     */
+    fun generateCompact3ColTsv(sieges: List<OutpostSiege>): String {
+        return buildString {
+            append("Дата\tНазвание аванпоста\tВклад\n")
+            for (s in sieges) {
+                val outpostFull = "${s.outpostLevel} ${s.outpostName}"
+                for (p in s.participants) {
+                    append(s.date).append("\t")
+                    append(outpostFull).append("\t")
+                    append("${p.playerName} ${p.powerFormatted}").append("\n")
+                }
+            }
+        }
+    }
+
+    /**
+     * Alternative structured format:
+     * 4 columns: "Дата", "Название аванпоста", "Участник", "Вклад"
+     * Ready for sorting, filtering, and pivot tables in Google Sheets!
+     */
+    fun generateStandard4ColTsv(sieges: List<OutpostSiege>): String {
+        return buildString {
+            append("Дата\tНазвание аванпоста\tУчастник\tВклад\n")
+            for (s in sieges) {
+                val outpostFull = "${s.outpostLevel} ${s.outpostName}"
+                for (p in s.participants) {
+                    append(s.date).append("\t")
+                    append(outpostFull).append("\t")
+                    append(p.playerName).append("\t")
+                    append(p.powerFormatted).append("\n")
+                }
+            }
+        }
+    }
+
+    /**
      * Generates clean Tab-Separated Values (TSV) for all participants (Влияние и награды) across all sieges.
      * Ready for direct Ctrl+V pasting into Google Sheets!
      */
@@ -161,21 +200,37 @@ object GoogleSheetsExporter {
 
     /**
      * Ready-to-copy Google Apps Script code for the user to paste into their Google Sheet.
+     * Automatically creates and updates both 'Участники' (с колонками Дата, Аванпост, Участник, Вклад)
+     * and 'Сводка осад'!
      */
     fun getAppsScriptTemplate(): String {
         return """
 function doPost(e) {
   var data = JSON.parse(e.postData.contents);
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["Дата", "Аванпост", "Тип", "Победитель", "Очки победителя", "Участников", "Топ игрок", "Влияние"]);
+  // 1. Лист 'Участники' (структура: Дата | Название аванпоста | Участник | Вклад | Влияние)
+  var pSheet = ss.getSheetByName("Участники") || ss.insertSheet("Участники");
+  if (pSheet.getLastRow() === 0) {
+    pSheet.appendRow(["Дата", "Название аванпоста", "Участник", "Вклад", "Влияние", "Клан"]);
+    pSheet.getRange(1, 1, 1, 6).setFontWeight("bold").setBackground("#f3f4f6");
+  }
+  
+  // 2. Лист 'Сводка осад'
+  var sSheet = ss.getSheetByName("Сводка осад") || ss.insertSheet("Сводка осад");
+  if (sSheet.getLastRow() === 0) {
+    sSheet.appendRow(["Дата", "Аванпост", "Тип", "Победитель", "Очки победителя", "Всего кланов", "Участников"]);
+    sSheet.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#f3f4f6");
   }
   
   data.sieges.forEach(function(s) {
-    var topPlayer = s.participants.length > 0 ? s.participants[0].name : "-";
-    var topInf = s.participants.length > 0 ? s.participants[0].influence : "-";
-    sheet.appendRow([s.date, s.outpost, s.type, s.winner, s.winnerScore, s.participants.length, topPlayer, topInf]);
+    // Добавляем сводку
+    sSheet.appendRow([s.date, s.outpost, s.type, s.winner, s.winnerScore, s.clansCount, s.participants.length]);
+    
+    // Добавляем всех участников данного аванпоста
+    s.participants.forEach(function(p) {
+      pSheet.appendRow([s.date, s.outpost, p.name, p.power, p.influence, p.clan]);
+    });
   });
   
   return ContentService.createTextOutput(JSON.stringify({result: "success"})).setMimeType(ContentService.MimeType.JSON);

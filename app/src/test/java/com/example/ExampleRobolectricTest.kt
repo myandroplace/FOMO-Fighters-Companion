@@ -65,5 +65,13 @@ class ExampleRobolectricTest {
     assertTrue("Participants TSV should contain player names", participantsTsv.contains("Аль Чаг"))
     assertTrue("Participants TSV should contain AlphaWolf_77", participantsTsv.contains("AlphaWolf_77"))
     assertTrue("Participants TSV should contain Вклад column", participantsTsv.contains("Вклад (мощь ⚔️)"))
+
+    val compact3ColTsv = GoogleSheetsExporter.generateCompact3ColTsv(sieges)
+    assertTrue("Compact 3-col should have exact header", compact3ColTsv.startsWith("Дата\tНазвание аванпоста\tВклад\n"))
+    assertTrue("Compact 3-col should contain player and power formatted", compact3ColTsv.contains("Аль Чаг 35.8M") || compact3ColTsv.contains("Аль Чаг"))
+
+    val standard4ColTsv = GoogleSheetsExporter.generateStandard4ColTsv(sieges)
+    assertTrue("Standard 4-col should have exact header", standard4ColTsv.startsWith("Дата\tНазвание аванпоста\tУчастник\tВклад\n"))
+    assertTrue("Standard 4-col should contain separate player column", standard4ColTsv.contains("Аль Чаг\t"))
   }
 }
