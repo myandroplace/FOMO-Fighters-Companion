@@ -22,10 +22,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Webhook
 import androidx.compose.material3.Button
@@ -255,7 +255,7 @@ fun GoogleSheetsScreen(
                                 .testTag("open_google_sheet_button"),
                             colors = ButtonDefaults.buttonColors(containerColor = AccentGold)
                         ) {
-                            Icon(Icons.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Black)
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Black)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Открыть таблицу", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
